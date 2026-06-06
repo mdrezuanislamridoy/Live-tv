@@ -26,7 +26,7 @@ interface TvState {
   // UI Configuration
   accentColor: 'blue' | 'purple' | 'pink' | 'green';
   tvMode: boolean; // D-pad/keyboard focused mode
-  activeTab: 'home' | 'categories' | 'favorites' | 'settings';
+  activeTab: 'home' | 'search' | 'categories' | 'favorites' | 'settings';
   
   // Actions
   setM3uUrl: (url: string) => void;
@@ -44,7 +44,7 @@ interface TvState {
   setAutoPlayNext: (val: boolean) => void;
   setAccentColor: (color: 'blue' | 'purple' | 'pink' | 'green') => void;
   setTvMode: (val: boolean) => void;
-  setActiveTab: (tab: 'home' | 'categories' | 'favorites' | 'settings') => void;
+  setActiveTab: (tab: 'home' | 'search' | 'categories' | 'favorites' | 'settings') => void;
 }
 
 export const useTvStore = create<TvState>((set, get) => {
@@ -183,10 +183,18 @@ export const useTvStore = create<TvState>((set, get) => {
                }
              }
           });
-          
+          // Custom sort to force T Sports to the top
+          parsedChannels.sort((a, b) => {
+            const aIsTSports = a.name.toLowerCase().includes('t sports') || a.name.toLowerCase().includes('tsports');
+            const bIsTSports = b.name.toLowerCase().includes('t sports') || b.name.toLowerCase().includes('tsports');
+            if (aIsTSports && !bIsTSports) return -1;
+            if (!aIsTSports && bIsTSports) return 1;
+            return 0;
+          });
+
           if (parsedChannels.length === 0) throw new Error('No channels parsed from API');
           
-          localStorage.setItem(`cached_m3u_v3_${m3uUrl}`, JSON.stringify(parsedChannels));
+          localStorage.setItem(`cached_m3u_v4_${m3uUrl}`, JSON.stringify(parsedChannels));
           
           const categories = ['All', ...Array.from(new Set(parsedChannels.map(c => c.category)))];
           set({ channels: parsedChannels, categories, loading: false });

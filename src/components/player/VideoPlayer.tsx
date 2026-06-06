@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize, 
   ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, 
-  Tv, Eye, Heart
+  Tv, Eye, Heart, Settings
 } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
 import { generateMockEpg, getCurrentProgram } from '../../utils/epgParser';
@@ -36,6 +36,15 @@ export const VideoPlayer: React.FC = () => {
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentShow, setCurrentShow] = useState<EpgProgram | null>(null);
   const [showChannelList, setShowChannelList] = useState(false);
+  
+  // Timeline State
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  // Quality State
+  const [qualityLevels, setQualityLevels] = useState<{height: number, bitrate: number, index: number}[]>([]);
+  const [currentQualityLevel, setCurrentQualityLevel] = useState<number>(-1);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
 
   // Controls auto-hide timer
   const controlsTimeoutRef = useRef<number | null>(null);
@@ -91,8 +100,18 @@ export const VideoPlayer: React.FC = () => {
           hls.loadSource(url);
           hls.attachMedia(video);
           
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
             setIsBuffering(false);
+            
+            // Map available quality levels
+            const levels = data.levels.map((l, index) => ({
+              height: l.height,
+              bitrate: l.bitrate,
+              index: index
+            }));
+            setQualityLevels(levels);
+            setCurrentQualityLevel(hls.currentLevel);
+
             if (isPlaying) {
               video.play().catch(err => {
                 console.warn("Autoplay blocked by browser with sound. Attempting muted autoplay...", err);
@@ -242,6 +261,14 @@ export const VideoPlayer: React.FC = () => {
     resetControlsTimer();
   };
 
+  const handleQualityChange = (levelIndex: number) => {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = levelIndex;
+      setCurrentQualityLevel(levelIndex);
+      setShowQualityMenu(false);
+    }
+  };
+
   // Fullscreen toggling
   const toggleFullscreen = () => {
     const container = containerRef.current;
@@ -355,6 +382,15 @@ export const VideoPlayer: React.FC = () => {
       <video
         ref={videoRef}
         onClick={togglePlay}
+        onTimeUpdate={() => {
+          if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+        }}
+        onLoadedMetadata={() => {
+          if (videoRef.current) {
+            const dur = videoRef.current.duration;
+            setDuration(isFinite(dur) ? dur : 0);
+          }
+        }}
         className="w-full h-full object-contain cursor-pointer"
         playsInline
       />
@@ -404,7 +440,10 @@ export const VideoPlayer: React.FC = () => {
 
       {/* Custom Player Controls (Fade effect) */}
       <div 
-        className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60 flex flex-col justify-between p-6 z-10 transition-opacity duration-300 select-none ${
+        onClick={(e) => {
+          if (e.target === e.currentTarget) togglePlay();
+        }}
+        className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60 flex flex-col justify-between p-3 md:p-6 z-10 transition-opacity duration-300 select-none ${
           showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -464,21 +503,41 @@ export const VideoPlayer: React.FC = () => {
 
         {/* Bottom Controls: Seek bar, buttons, and timers */}
         <div className="w-full flex flex-col gap-3.5 mt-auto">
-          {/* EPG Time progress bar if EPG is running */}
-          {currentShow && (
+          {/* Timeline / EPG Area */}
+          {duration > 0 ? (
+            <div className="flex items-center gap-3 px-1 mb-1">
+              <span className="text-[10px] text-white font-mono shrink-0">
+                {new Date(currentTime * 1000).toISOString().substring(14, 19)}
+              </span>
+              <input
+                type="range"
+                min="0"
+                max={duration}
+                step="1"
+                value={currentTime}
+                onChange={(e) => {
+                  const newTime = parseFloat(e.target.value);
+                  setCurrentTime(newTime);
+                  if (videoRef.current) videoRef.current.currentTime = newTime;
+                }}
+                className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer bg-white/20 accent-white hover:h-2 transition-all`}
+              />
+              <span className="text-[10px] text-gray-400 font-mono shrink-0">
+                {new Date(duration * 1000).toISOString().substring(14, 19)}
+              </span>
+            </div>
+          ) : currentShow && (
             <div className="flex flex-col gap-1 px-1">
               <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold uppercase">
                 <span>EPG: {currentShow.title}</span>
-                <span>LIVE STREAMING</span>
+                <span className="flex items-center gap-1.5 text-rose-500 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" /> LIVE
+                </span>
               </div>
-              {/* Fake progress bar depicting how far into the show we are */}
               <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <div 
                   className={`h-full ${getAccentProgressBgClass()}`}
-                  style={{
-                    // Deterministically set to 42% progress or calculate relative to show start/end
-                    width: `${Math.min(100, Math.max(10, ((new Date().getTime() - currentShow.start.getTime()) / (currentShow.end.getTime() - currentShow.start.getTime())) * 100))}%`
-                  }}
+                  style={{ width: `${Math.min(100, Math.max(10, ((new Date().getTime() - currentShow.start.getTime()) / (currentShow.end.getTime() - currentShow.start.getTime())) * 100))}%` }}
                 />
               </div>
               <div className="flex justify-between items-center text-[9px] text-gray-500 font-semibold">
@@ -533,17 +592,52 @@ export const VideoPlayer: React.FC = () => {
                     setVolume(parseFloat(e.target.value));
                     setIsMuted(false);
                   }}
-                  className="w-20 md:w-24 accent-white h-1.5 rounded-lg appearance-none cursor-pointer bg-white/20"
+                  className="hidden sm:block w-20 md:w-24 accent-white h-1.5 rounded-lg appearance-none cursor-pointer bg-white/20"
                 />
               </div>
             </div>
 
             {/* Utility Controls */}
             <div className="flex items-center gap-2">
+              {/* Settings / Quality Button */}
+              {qualityLevels.length > 0 && (
+                <div className="relative">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowQualityMenu(!showQualityMenu); }}
+                    className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-1"
+                    title="Video Quality"
+                  >
+                    <Settings size={16} />
+                    {currentQualityLevel === -1 ? <span className="text-[10px] font-bold">AUTO</span> : <span className="text-[10px] font-bold">{qualityLevels.find(l => l.index === currentQualityLevel)?.height || 'AUTO'}p</span>}
+                  </button>
+                  
+                  {/* Quality Menu Overlay */}
+                  {showQualityMenu && (
+                    <div className="absolute bottom-full right-0 mb-2 w-32 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden flex flex-col z-50 shadow-2xl">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleQualityChange(-1); }}
+                        className={`text-left px-4 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors ${currentQualityLevel === -1 ? getAccentTextClass() : 'text-white'}`}
+                      >
+                        Auto (ABR)
+                      </button>
+                      {qualityLevels.slice().reverse().map(level => (
+                        <button
+                          key={level.index}
+                          onClick={(e) => { e.stopPropagation(); handleQualityChange(level.index); }}
+                          className={`text-left px-4 py-2 text-xs font-medium hover:bg-white/10 transition-colors ${currentQualityLevel === level.index ? getAccentTextClass() : 'text-white'}`}
+                        >
+                          {level.height}p {level.bitrate ? `(${Math.round(level.bitrate / 1000)}k)` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Picture in Picture */}
               <button
                 onClick={togglePiP}
-                className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="hidden sm:block p-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 title="Picture in Picture"
               >
                 <Eye size={16} />

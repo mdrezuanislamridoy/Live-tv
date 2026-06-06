@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, FolderHeart, Heart, Settings, Tv, Menu } from 'lucide-react';
+import { Home, FolderHeart, Heart, Settings, Tv, Menu, Search } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
 
 interface SidebarProps {
@@ -12,6 +12,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
 
   const navItems = [
     { id: 'home' as const, label: 'Home', icon: Home },
+    { id: 'search' as const, label: 'Search', icon: Search },
     { id: 'categories' as const, label: 'Categories', icon: FolderHeart },
     { id: 'favorites' as const, label: 'Favorites', icon: Heart },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
@@ -56,19 +57,22 @@ export const Sidebar: React.FC<SidebarProps> = () => {
           <span className={`font-bold text-lg tracking-wider text-gradient-flow whitespace-nowrap transition-opacity duration-300 ${
             isHovered ? 'opacity-100' : 'opacity-0'
           }`}>
-            ANTIGRAVITY TV
+            RR STREAM
           </span>
         </div>
 
         {/* Navigation Items */}
         <nav className="flex-1 py-6 space-y-2 px-3">
-          {navItems.map((item) => {
+          {navItems.filter(item => item.id !== 'search').map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  if (activeTab !== item.id) useTvStore.getState().setSearchQuery('');
+                  setActiveTab(item.id);
+                }}
                 className={`w-full flex items-center gap-4 py-3.5 px-4 rounded-xl font-medium transition-all duration-250 sidebar-focus focusable ${
                   isActive 
                     ? `bg-white/5 font-semibold border-l-4 ${getAccentClass()}` 
@@ -108,7 +112,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                if (activeTab !== item.id) useTvStore.getState().setSearchQuery('');
+                setActiveTab(item.id);
+              }}
               className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition-colors ${
                 isActive ? getAccentClass().split(' ')[0] : 'text-gray-500'
               }`}

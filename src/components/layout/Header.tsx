@@ -49,7 +49,7 @@ export const Header: React.FC = () => {
       case 'settings': return 'App Settings';
       case 'home':
       default:
-        return activeCategory === 'All' ? 'Live TV Home' : activeCategory;
+        return activeCategory === 'All' ? 'RR Stream' : activeCategory;
     }
   };
 
@@ -75,9 +75,9 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="w-full h-20 px-6 md:px-10 flex items-center justify-between border-b border-white/5 bg-brand-bg/50 backdrop-blur-md sticky top-0 z-30">
+    <header className="w-full px-4 md:px-10 py-3 md:py-0 min-h-[80px] flex flex-wrap items-center justify-between border-b border-white/5 bg-brand-bg/50 backdrop-blur-md sticky top-0 z-30 gap-y-3 gap-x-2">
       {/* Title & Stats */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 order-1">
         <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white whitespace-nowrap">
           {getHeaderTitle()}
         </h1>
@@ -88,23 +88,8 @@ export const Header: React.FC = () => {
         )}
       </div>
 
-      {/* Middle Search (Hide on Settings or EPG screens if not matching, but keep for Home/Categories/Favorites) */}
-      {activeTab !== 'settings' && (
-        <div className={`hidden md:flex items-center flex-1 max-w-md mx-8 glass-panel-light rounded-xl px-4 py-2 border border-white/15 transition-all duration-300 ${getAccentFocusClass()}`}>
-          <Search size={18} className="text-gray-400 mr-2.5 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search channels, genres, categories..."
-            className="bg-transparent border-none text-white text-sm outline-none w-full focusable"
-            tabIndex={0}
-          />
-        </div>
-      )}
-
       {/* Right widgets (Clock, Wifi) */}
-      <div className="flex items-center gap-4 md:gap-6">
+      <div className="flex items-center gap-3 md:gap-6 order-2 md:order-3">
         {/* Wifi indicator */}
         <div className="flex items-center" title={isOnline ? "Connected to internet" : "Offline mode"}>
           {isOnline ? (
@@ -115,13 +100,28 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Dynamic Clock */}
-        <div className="flex items-center gap-2 text-gray-300 bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-xl text-xs md:text-sm">
+        <div className="flex items-center gap-2 text-gray-300 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl text-xs md:text-sm">
           <Clock size={15} className="text-gray-400" />
           <span className="font-semibold">{formatTime(time)}</span>
           <span className="hidden sm:inline text-gray-500">|</span>
           <span className="hidden sm:inline text-gray-400">{formatDate(time)}</span>
         </div>
       </div>
+
+      {/* Middle Search (Hidden on Mobile, available via Bottom Nav) */}
+      {activeTab !== 'settings' && activeTab !== 'search' && (
+        <div className={`hidden md:flex items-center md:flex-1 max-w-md order-3 md:order-2 md:mx-8 glass-panel-light rounded-xl px-4 py-2.5 border border-white/15 transition-all duration-300 ${getAccentFocusClass()}`}>
+          <Search size={18} className="text-gray-400 mr-2.5 shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search channels, genres..."
+            className="bg-transparent border-none text-white text-sm outline-none w-full focusable"
+            tabIndex={0}
+          />
+        </div>
+      )}
     </header>
   );
 };
