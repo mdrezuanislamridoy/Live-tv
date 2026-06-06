@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<video id="video" controls></video>
+<script>
+  if(Hls.isSupported()) {
+    var video = document.getElementById('video');
+    var hls = new Hls({
+      xhrSetup: function(xhr, url) {
+        if (!url.includes('corsproxy.io')) {
+          xhr.open('GET', 'https://corsproxy.io/?' + encodeURIComponent(url), true);
+        }
+      }
+    });
+    // some CORS blocked stream
+    hls.loadSource('https://amg00170-amg00170c4-samsung-gb-4232.playouts.now.amagi.tv/playlist.m3u8');
+    hls.attachMedia(video);
+  }
+</script>
+</body>
+</html>

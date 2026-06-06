@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #050505;
+  --color-brand-dark: #0A0A0A;
+  --color-brand-card: rgba(18, 18, 18, 0.5);
+  --color-brand-card-hover: rgba(30, 30, 30, 0.7);
+  --color-neon-blue: #00f2fe;
+  --color-neon-blue-glow: rgba(0, 242, 254, 0.3);
+  --color-neon-purple: #9d4edd;
+  --color-neon-purple-glow: rgba(157, 78, 221, 0.3);
+  --color-neon-pink: #ff007f;
+  --color-neon-green: #39ff14;
+  
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-brand-bg);
+    color: #f3f4f6;
+    overflow-x: hidden;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* Reset default outlines for spatial navigation */
+  *:focus {
+    outline: none;
+  }
+}
+
+/* Glassmorphism Panel Utility */
+.glass-panel {
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Scrollbar Hiding and Styling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Interactive Focus Classes for D-pad / Keyboard Spatial Navigation */
+.focusable {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+/* Active focus visual state */
+.focusable:focus-visible,
+.focusable.focused {
+  transform: scale(1.04);
+  z-index: 10;
+  border-color: var(--color-neon-blue);
+  box-shadow: 0 0 20px var(--color-neon-blue-glow), 
+              inset 0 0 10px rgba(0, 242, 254, 0.1);
+}
+
+/* Card specific focus styles */
+.channel-card-focus:focus-visible,
+.channel-card-focus.focused {
+  transform: scale(1.05);
+  z-index: 20;
+  border-color: var(--color-neon-purple);
+  box-shadow: 0 0 25px var(--color-neon-purple-glow),
+              inset 0 0 15px rgba(157, 78, 221, 0.15);
+}
+
+/* Hero Button specific focus */
+.btn-focus:focus-visible,
+.btn-focus.focused {
+  transform: translateY(-2px) scale(1.03);
+  border-color: white;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Sidebar Button specific focus */
+.sidebar-focus:focus-visible,
+.sidebar-focus.focused {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--color-neon-blue);
+  border-left: 3px solid var(--color-neon-blue);
+}
+
+/* Text Selection Glow */
+::selection {
+  background: var(--color-neon-purple);
+  color: white;
+}
+
+/* Gradient text animations */
+@keyframes flow-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.text-gradient-flow {
+  background: linear-gradient(270deg, var(--color-neon-blue), var(--color-neon-purple), var(--color-neon-pink));
+  background-size: 600% 600%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: flow-gradient 8s ease infinite;
+}
