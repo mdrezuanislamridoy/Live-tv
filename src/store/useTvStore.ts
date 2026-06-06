@@ -198,7 +198,7 @@ export const useTvStore = create<TvState>((set, get) => {
           
           const categories = ['All', ...Array.from(new Set(parsedChannels.map(c => c.category)))];
           set({ channels: parsedChannels, categories, loading: false });
-          if (parsedChannels.length > 0 && !get().currentChannel) set({ currentChannel: parsedChannels[0] });
+          // Auto-play removed per user request: if (parsedChannels.length > 0 && !get().currentChannel) set({ currentChannel: parsedChannels[0] });
           return;
         }
 
@@ -242,10 +242,10 @@ export const useTvStore = create<TvState>((set, get) => {
           loading: false 
         });
 
-        // Set default playing channel
-        if (parsedChannels.length > 0 && !get().currentChannel) {
-          set({ currentChannel: parsedChannels[0] });
-        }
+        // Set default playing channel removed per user request
+        // if (parsedChannels.length > 0 && !get().currentChannel) {
+        //   set({ currentChannel: parsedChannels[0] });
+        // }
       } catch (err: any) {
         console.error(err);
         set({ 
