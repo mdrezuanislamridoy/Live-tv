@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Home, FolderHeart, Heart, Settings, Tv, Menu, Search } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
 
@@ -8,7 +8,6 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = () => {
   const { activeTab, setActiveTab, accentColor, tvMode } = useTvStore();
-  const [isHovered, setIsHovered] = useState(false);
 
   const navItems = [
     { id: 'home' as const, label: 'Home', icon: Home },
@@ -43,20 +42,14 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     <>
       {/* TV / Desktop Left Sidebar */}
       <aside 
-        className={`fixed top-0 left-0 h-full z-40 hidden md:flex flex-col glass-panel border-r border-white/5 transition-all duration-300 ${
-          isHovered ? 'w-64' : 'w-20'
-        }`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className="fixed top-0 left-0 h-full z-40 hidden md:flex flex-col glass-panel border-r border-white/5 w-64"
       >
         {/* Logo Section */}
         <div className="h-20 flex items-center px-6 gap-4 border-b border-white/5 overflow-hidden">
           <div className={`p-2 rounded-lg ${getAccentBgClass()} shrink-0`}>
             <Tv size={24} />
           </div>
-          <span className={`font-bold text-lg tracking-wider text-gradient-flow whitespace-nowrap transition-opacity duration-300 ${
-            isHovered ? 'opacity-100' : 'opacity-0'
-          }`}>
+          <span className="font-bold text-lg tracking-wider text-gradient-flow whitespace-nowrap">
             RR STREAM
           </span>
         </div>
@@ -81,9 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 aria-label={item.label}
               >
                 <Icon size={22} className="shrink-0" />
-                <span className={`transition-all duration-300 whitespace-nowrap ${
-                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 pointer-events-none'
-                }`}>
+                <span className="whitespace-nowrap">
                   {item.label}
                 </span>
               </button>
@@ -95,9 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         <div className="p-4 border-t border-white/5 overflow-hidden">
           <div className="flex items-center gap-3 text-xs text-gray-500">
             <Menu size={16} className="shrink-0" />
-            <span className={`whitespace-nowrap transition-opacity duration-300 ${
-              isHovered ? 'opacity-100' : 'opacity-0'
-            }`}>
+            <span className="whitespace-nowrap">
               {tvMode ? 'D-Pad Active' : 'Keyboard Friendly'}
             </span>
           </div>

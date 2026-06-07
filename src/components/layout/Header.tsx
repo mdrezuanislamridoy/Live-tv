@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Wifi, WifiOff, Clock } from 'lucide-react';
+import { Search, Wifi, WifiOff, Clock, Tv } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
 
 export const Header: React.FC = () => {
@@ -47,9 +47,10 @@ export const Header: React.FC = () => {
       case 'categories': return 'Explore Categories';
       case 'favorites': return 'My Favorites';
       case 'settings': return 'App Settings';
+      case 'search': return 'Search Channels';
       case 'home':
       default:
-        return activeCategory === 'All' ? 'RR Stream' : activeCategory;
+        return activeCategory === 'All' ? 'Home' : activeCategory;
     }
   };
 
@@ -77,12 +78,26 @@ export const Header: React.FC = () => {
   return (
     <header className="w-full px-4 md:px-10 py-3 md:py-0 min-h-[80px] flex flex-wrap items-center justify-between border-b border-white/5 bg-brand-bg/50 backdrop-blur-md sticky top-0 z-30 gap-y-3 gap-x-2">
       {/* Title & Stats */}
-      <div className="flex items-center gap-4 order-1">
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white whitespace-nowrap">
+      <div className="flex items-center gap-2 md:gap-3.5 order-1">
+        {/* Fixed Logo Branding */}
+        {/* <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-lg ${getAccentBgClass()} shrink-0`}>
+            <Tv size={18} />
+          </div>
+          <span className="font-bold text-base md:text-lg tracking-wider text-gradient-flow whitespace-nowrap">
+            RR STREAM
+          </span>
+        </div> */}
+
+        {/* Separator / slash */}
+        <span className="text-white/10 text-lg">/</span>
+
+        {/* Dynamic Title */}
+        <h1 className="text-sm md:text-base font-semibold tracking-tight text-gray-300 whitespace-nowrap">
           {getHeaderTitle()}
         </h1>
         {activeTab === 'home' && (
-          <span className={`hidden sm:inline-flex items-center text-xs px-2.5 py-1 rounded-full border ${getAccentBgClass()} font-medium`}>
+          <span className={`hidden lg:inline-flex items-center text-xs px-2.5 py-1 rounded-full border ${getAccentBgClass()} font-medium`}>
             {channels.length} channels loaded
           </span>
         )}

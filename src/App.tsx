@@ -44,7 +44,7 @@ const App: React.FC = () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col md:ml-20 min-w-0 transition-all duration-300">
+      <main className="flex-1 flex flex-col md:ml-64 min-w-0 transition-all duration-300">
         {/* Header Widget */}
         <Header />
 
