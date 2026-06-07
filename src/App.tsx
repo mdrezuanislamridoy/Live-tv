@@ -4,25 +4,19 @@ import { useTvNavigation } from './hooks/useTvNavigation';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { VideoPlayer } from './components/player/VideoPlayer';
-import { ChannelRow } from './components/channel/ChannelRow';
-import { ChannelCard } from './components/channel/ChannelCard';
-import { ChannelGrid } from './components/channel/ChannelGrid';
 import { Settings } from './components/settings/Settings';
-import { Tv, Heart, Search } from 'lucide-react';
+import { HomeTab } from './components/home/HomeTab';
+import { SearchTab } from './components/search/SearchTab';
+import { CategoriesTab } from './components/categories/CategoriesTab';
+import { FavoritesTab } from './components/favorites/FavoritesTab';
 
 const App: React.FC = () => {
   const {
     activeTab,
-    channels,
     currentChannel,
-    favorites,
-    recentlyWatched,
     loadPlaylist,
     accentColor,
     error,
-    loading,
-    searchQuery,
-    setSearchQuery
   } = useTvStore();
 
   // Initialize Spatial D-pad & Keyboard Navigation
@@ -32,18 +26,6 @@ const App: React.FC = () => {
   useEffect(() => {
     loadPlaylist();
   }, []);
-
-  // Filter channels to render favorites list
-  const favoriteChannels = channels.filter(c => favorites.includes(c.id));
-
-  // Filter channels to render recently watched list
-  const historyChannels = recentlyWatched
-    .map(id => channels.find(c => c.id === id))
-    .filter((c): c is typeof channels[0] => !!c);
-
-
-  // Filter channels for Trending list (just select a few from index)
-  const trendingChannels = channels.slice(1, 10);
 
   // Accent color mapping helper
   const getAccentTextClass = () => {
@@ -96,115 +78,11 @@ const App: React.FC = () => {
           )}
 
           {/* Main Tab Views Switcher */}
-          {activeTab === 'home' && (
-            <div className="flex flex-col gap-2">
-              {/* Select a Channel Placeholder */}
-              {!currentChannel && channels.length > 0 && !loading && (
-                <div className="w-full h-[250px] md:h-[350px] flex flex-col items-center justify-center bg-black/20 border border-white/5 rounded-3xl mb-4 glass-panel-light relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50" />
-                  
-                  <div className="p-4 md:p-6 rounded-full bg-white/5 border border-white/10 mb-4 animate-[bounce_3s_ease-in-out_infinite] shadow-[0_0_30px_rgba(255,255,255,0.05)] backdrop-blur-md relative z-10">
-                    <Tv size={40} className="text-white/80" />
-                  </div>
-                  <h2 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight relative z-10">Select a channel to watch</h2>
-                  <p className="text-sm text-gray-400 text-center max-w-sm px-4 relative z-10">
-                    Click on any channel card below from the live TV guide to instantly start streaming!
-                  </p>
-                </div>
-              )}
-              {/* Loader Spinner */}
-              {loading && channels.length === 0 && (
-                <div className="w-full py-24 flex flex-col items-center justify-center gap-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-                  <p className="text-gray-400 text-sm font-semibold tracking-wider">PARSING CHANNELS...</p>
-                </div>
-              )}
-
-              {/* Channel Lists Rows */}
-              {channels.length > 0 && (
-                <div className="flex flex-col">
-                  {/* Hide non-search content when actively searching */}
-                  {!searchQuery && (
-                    <>
-                      {/* Recently Played Row */}
-                      {historyChannels.length > 0 && (
-                        <ChannelRow title="Recently Watched" channels={historyChannels} />
-                      )}
-
-                      {/* Favorites Row */}
-                      {favoriteChannels.length > 0 && (
-                        <ChannelRow title="Favorite Channels" channels={favoriteChannels} />
-                      )}
-
-                      {/* Trending Channels */}
-                      <ChannelRow title="Trending Broadcasters" channels={trendingChannels} />
-                    </>
-                  )}
-
-                  {/* All Channels Grid Section */}
-                  <div className="mt-6">
-                    <div className="flex items-center gap-2 mb-6 px-2">
-                      <Tv size={20} className={getAccentTextClass()} />
-                      <h3 className="text-lg md:text-xl font-bold tracking-tight text-white/90">
-                        All Channels Guide
-                      </h3>
-                    </div>
-                    <ChannelGrid channels={channels} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'search' && (
-            <div className="flex flex-col gap-6 w-full mt-2">
-              <div className="flex items-center w-full glass-panel-light rounded-2xl px-5 py-4 border border-white/15 focus-within:border-white/40 focus-within:shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all duration-300">
-                <Search size={24} className="text-gray-400 mr-4 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search live channels, sports, or categories..."
-                  className="bg-transparent border-none text-white text-lg outline-none w-full placeholder:text-gray-500 focusable"
-                  autoFocus
-                />
-              </div>
-              <ChannelGrid channels={channels} />
-            </div>
-          )}
-
-          {activeTab === 'categories' && (
-            <div className="flex flex-col gap-2">
-              <ChannelGrid channels={channels} />
-            </div>
-          )}
-
-          {activeTab === 'favorites' && (
-            <div className="flex flex-col gap-6">
-              {favoriteChannels.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                  {favoriteChannels.map((channel) => (
-                    <ChannelCard key={channel.id} channel={channel} />
-                  ))}
-                </div>
-              ) : (
-                /* Empty Favorites State */
-                <div className="w-full flex flex-col items-center justify-center py-24 px-6 rounded-3xl border border-dashed border-white/10 glass-panel">
-                  <div className="p-4 rounded-full bg-white/5 border border-white/5 text-gray-500 mb-4 animate-pulse">
-                    <Heart size={40} />
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-1">Your favorites is empty</h3>
-                  <p className="text-sm text-gray-400 text-center max-w-sm">
-                    Navigate back to the channels grid, click on any channel card, and click the Heart icon to add it here.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <Settings />
-          )}
+          {activeTab === 'home' && <HomeTab />}
+          {activeTab === 'search' && <SearchTab />}
+          {activeTab === 'categories' && <CategoriesTab />}
+          {activeTab === 'favorites' && <FavoritesTab />}
+          {activeTab === 'settings' && <Settings />}
         </div>
       </main>
     </div>
