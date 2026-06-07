@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Wifi, WifiOff, Clock, Tv } from 'lucide-react';
+import { Search, Wifi, WifiOff, Clock } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
 
 export const Header: React.FC = () => {
