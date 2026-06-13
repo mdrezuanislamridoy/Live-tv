@@ -7,7 +7,9 @@ import { VideoPlayer } from './components/player/VideoPlayer';
 import { Settings } from './components/settings/Settings';
 import { HomeTab } from './components/home/HomeTab';
 import { SearchTab } from './components/search/SearchTab';
+
 import { CategoriesTab } from './components/categories/CategoriesTab';
+import { AllChannelsTab } from './components/all-channels/AllChannelsTab';
 import { FavoritesTab } from './components/favorites/FavoritesTab';
 
 const App: React.FC = () => {
@@ -81,6 +83,7 @@ const App: React.FC = () => {
           {activeTab === 'home' && <HomeTab />}
           {activeTab === 'search' && <SearchTab />}
           {activeTab === 'categories' && <CategoriesTab />}
+          {activeTab === 'all-channels' && <AllChannelsTab />}
           {activeTab === 'favorites' && <FavoritesTab />}
           {activeTab === 'settings' && <Settings />}
         </div>

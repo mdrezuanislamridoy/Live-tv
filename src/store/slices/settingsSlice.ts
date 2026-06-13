@@ -4,10 +4,10 @@ import type { TvState } from '../types';
 export interface SettingsSlice {
   accentColor: 'blue' | 'purple' | 'pink' | 'green';
   tvMode: boolean;
-  activeTab: 'home' | 'search' | 'categories' | 'favorites' | 'settings';
+  activeTab: 'home' | 'search' | 'categories' | 'favorites' | 'settings' | 'all-channels';
   setAccentColor: (color: 'blue' | 'purple' | 'pink' | 'green') => void;
   setTvMode: (val: boolean) => void;
-  setActiveTab: (tab: 'home' | 'search' | 'categories' | 'favorites' | 'settings') => void;
+  setActiveTab: (tab: 'home' | 'search' | 'categories' | 'favorites' | 'settings' | 'all-channels') => void;
 }
 
 export const createSettingsSlice: StateCreator<

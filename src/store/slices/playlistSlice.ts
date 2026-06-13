@@ -20,7 +20,7 @@ export interface PlaylistSlice {
 }
 
 const BASE = 'https://raw.githubusercontent.com/SHAJON-404/iptv/main/app/data';
-const CACHE_KEY = 'shajon_channels_v1';
+const CACHE_KEY = 'shajon_channels_v2';
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 export const createPlaylistSlice: StateCreator<
@@ -123,11 +123,13 @@ export const createPlaylistSlice: StateCreator<
 
         const categories = buildCategories(footballChannels);
 
+        const allChannels = [...footballChannels, ...restChannels];
+
         try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), football: footballChannels, all: restChannels }));
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), football: footballChannels, all: allChannels }));
         } catch { /* storage full */ }
 
-        set({ channels: footballChannels, allChannels: restChannels, categories, loading: false } as Partial<TvState>);
+        set({ channels: footballChannels, allChannels, categories, loading: false } as Partial<TvState>);
         if (!get().currentChannel && footballChannels.length > 0) {
           set({ currentChannel: footballChannels[0] } as Partial<TvState>);
         }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, FolderHeart, Heart, Settings, Tv, Menu, Search } from 'lucide-react';
+import { Home, FolderHeart, Heart, Settings, Tv, Menu, Search, Globe } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'search' as const, label: 'Search', icon: Search },
     { id: 'categories' as const, label: 'Categories', icon: FolderHeart },
+    { id: 'all-channels' as const, label: 'All Channels', icon: Globe },
     { id: 'favorites' as const, label: 'Favorites', icon: Heart },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];

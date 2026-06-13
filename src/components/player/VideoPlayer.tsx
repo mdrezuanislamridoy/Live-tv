@@ -31,7 +31,7 @@ export const VideoPlayer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [currentShow, setCurrentShow] = useState<EpgProgram | null>(null);
@@ -309,24 +309,16 @@ export const VideoPlayer: React.FC = () => {
     if (controlsTimeoutRef.current) {
       window.clearTimeout(controlsTimeoutRef.current);
     }
-    // Auto hide controls after 4 seconds of no activity
     controlsTimeoutRef.current = window.setTimeout(() => {
-      if (isPlaying && !showChannelList) {
-        setShowControls(false);
-      }
-    }, 4000);
-  };
-
-  const handleMouseMove = () => {
-    resetControlsTimer();
+      setShowControls(false);
+    }, 5000);
   };
 
   useEffect(() => {
-    resetControlsTimer();
     return () => {
       if (controlsTimeoutRef.current) window.clearTimeout(controlsTimeoutRef.current);
     };
-  }, [isPlaying, showChannelList]);
+  }, []);
 
   if (!currentChannel) {
     return (
@@ -363,15 +355,14 @@ export const VideoPlayer: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className={`relative w-full aspect-video rounded-3xl overflow-hidden bg-black border border-white/5 shadow-2xl group/player ${
+      onClick={resetControlsTimer}
+      className={`relative w-full aspect-video rounded-3xl overflow-hidden bg-black border border-white/5 shadow-2xl group/player cursor-pointer ${
         isFullscreen ? 'h-screen w-screen border-none rounded-none' : ''
       }`}
     >
       {/* Video Element */}
       <video
         ref={videoRef}
-        onClick={resetControlsTimer}
         onTimeUpdate={() => {
           if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
         }}
@@ -430,9 +421,8 @@ export const VideoPlayer: React.FC = () => {
 
       {/* Custom Player Controls (Fade effect) */}
       <div 
-        onClick={resetControlsTimer}
         className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60 flex flex-col justify-between p-3 md:p-6 z-10 transition-opacity duration-300 select-none ${
-          showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
         {/* Top Controls: Channel details */}
