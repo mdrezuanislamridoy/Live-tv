@@ -15,16 +15,11 @@ export const HomeTab: React.FC = () => {
     currentChannel
   } = useTvStore();
 
-  // Filter channels to render favorites list
   const favoriteChannels = channels.filter(c => favorites.includes(c.id));
-
-  // Filter channels to render recently watched list
   const historyChannels = recentlyWatched
     .map(id => channels.find(c => c.id === id))
     .filter((c): c is typeof channels[0] => !!c);
-
-  // Filter channels for Trending list (just select a few from index)
-  const trendingChannels = channels.slice(1, 10);
+  const trendingChannels = channels.slice(0, 12);
 
   // Accent color mapping helper
   const getAccentTextClass = () => {
@@ -83,12 +78,12 @@ export const HomeTab: React.FC = () => {
             </>
           )}
 
-          {/* All Channels Grid Section */}
+          {/* All Football/FIFA Channels Grid */}
           <div className="mt-6">
             <div className="flex items-center gap-2 mb-6 px-2">
               <Tv size={20} className={getAccentTextClass()} />
               <h3 className="text-lg md:text-xl font-bold tracking-tight text-white/90">
-                All Channels Guide
+                ⚽ Football &amp; FIFA WC 2026
               </h3>
             </div>
             <ChannelGrid channels={channels} />

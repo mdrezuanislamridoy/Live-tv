@@ -4,7 +4,8 @@ export interface TvState {
   // Playlist & Channels
   m3uUrl: string;
   epgUrl: string;
-  channels: Channel[];
+  channels: Channel[];        // football/FIFA only
+  allChannels: Channel[];     // all 6800+ channels
   categories: string[];
   favorites: string[];
   recentlyWatched: string[];
@@ -23,7 +24,7 @@ export interface TvState {
   // UI Configuration
   accentColor: 'blue' | 'purple' | 'pink' | 'green';
   tvMode: boolean; // D-pad/keyboard focused mode
-  activeTab: 'home' | 'search' | 'categories' | 'favorites' | 'settings';
+  activeTab: 'home' | 'search' | 'categories' | 'favorites' | 'settings' | 'all-channels';
   
   // Actions
   setM3uUrl: (url: string) => void;
@@ -41,5 +42,5 @@ export interface TvState {
   setAutoPlayNext: (val: boolean) => void;
   setAccentColor: (color: 'blue' | 'purple' | 'pink' | 'green') => void;
   setTvMode: (val: boolean) => void;
-  setActiveTab: (tab: 'home' | 'search' | 'categories' | 'favorites' | 'settings') => void;
+  setActiveTab: (tab: 'home' | 'search' | 'categories' | 'favorites' | 'settings' | 'all-channels') => void;
 }

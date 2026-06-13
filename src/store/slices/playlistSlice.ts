@@ -1,13 +1,12 @@
 import type { StateCreator } from 'zustand';
 import type { TvState } from '../types';
-import { parseM3U } from '../../utils/m3uParser';
-import { STATIC_FALLBACK_M3U, DEFAULT_M3U_URL, DEFAULT_EPG_URL } from '../../config';
 import type { Channel } from '../../utils/m3uParser';
 
 export interface PlaylistSlice {
   m3uUrl: string;
   epgUrl: string;
-  channels: Channel[];
+  channels: Channel[];      // football/FIFA only
+  allChannels: Channel[];   // all 6800+
   categories: string[];
   activeCategory: string;
   searchQuery: string;
@@ -20,210 +19,132 @@ export interface PlaylistSlice {
   setSearchQuery: (query: string) => void;
 }
 
+const BASE = 'https://raw.githubusercontent.com/SHAJON-404/iptv/main/app/data';
+const CACHE_KEY = 'shajon_channels_v1';
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
 export const createPlaylistSlice: StateCreator<
   TvState,
   [],
   [],
   PlaylistSlice
 > = (set, get) => {
-  // Load initial settings from localStorage
-  let savedM3u = typeof window !== 'undefined' ? localStorage.getItem('tv_m3u_url') || DEFAULT_M3U_URL : DEFAULT_M3U_URL;
-  
-  // Force migration for users who had the old fallback default or specific presets
-  if (savedM3u === 'local-sample' || savedM3u.includes('documentary.m3u')) {
-    savedM3u = 'iptv-org-api';
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('tv_m3u_url', savedM3u);
-    }
-  }
-  
-  const savedEpg = typeof window !== 'undefined' ? localStorage.getItem('tv_epg_url') || DEFAULT_EPG_URL : DEFAULT_EPG_URL;
-
   return {
-    m3uUrl: savedM3u,
-    epgUrl: savedEpg,
+    m3uUrl: BASE,
+    epgUrl: '',
     channels: [],
+    allChannels: [],
     categories: [],
     activeCategory: 'All',
     searchQuery: '',
     loading: false,
     error: null,
 
-    setM3uUrl: (url) => {
-      localStorage.setItem('tv_m3u_url', url);
-      set({ m3uUrl: url } as Partial<TvState>);
-      get().loadPlaylist(true);
-    },
-
-    setEpgUrl: (url) => {
-      localStorage.setItem('tv_epg_url', url);
-      set({ epgUrl: url } as Partial<TvState>);
-    },
+    setM3uUrl: (_url) => { get().loadPlaylist(true); },
+    setEpgUrl: (_url) => {},
 
     loadPlaylist: async (forceReload = false) => {
-      const { m3uUrl } = get();
       set({ loading: true, error: null } as Partial<TvState>);
 
-      // 1. Try to load from Local Cache if not forcing reload
+      // Check cache
       if (!forceReload) {
-        const cachedContent = localStorage.getItem(`cached_m3u_v2_${m3uUrl}`);
-        if (cachedContent) {
-          let parsed: Channel[] = [];
-          if (m3uUrl === 'iptv-org-api') {
-            try {
-              parsed = JSON.parse(cachedContent);
-            } catch (e) {
-              parsed = [];
+        try {
+          const cached = localStorage.getItem(CACHE_KEY);
+          if (cached) {
+            const { ts, football, all } = JSON.parse(cached);
+            if (Date.now() - ts < CACHE_TTL && football?.length > 0) {
+              const categories = buildCategories(football);
+              set({ channels: football, allChannels: all || [], categories, loading: false } as Partial<TvState>);
+              if (!get().currentChannel) set({ currentChannel: football[0] } as Partial<TvState>);
+              return;
             }
-          } else {
-            parsed = parseM3U(cachedContent);
           }
-          
-          if (parsed.length > 0) {
-            const categories = ['All', ...Array.from(new Set(parsed.map(c => c.category)))];
-            set({ 
-              channels: parsed, 
-              categories, 
-              loading: false 
-            } as Partial<TvState>);
-            return;
-          }
-        }
+        } catch { /* ignore bad cache */ }
       }
 
-      // 2. Fetch playlist
       try {
-        if (m3uUrl === 'iptv-org-api') {
-          // Fetch from real JSON REST API
-          const [channelsRes, streamsRes, logosRes] = await Promise.all([
-            fetch('https://iptv-org.github.io/api/channels.json'),
-            fetch('https://iptv-org.github.io/api/streams.json'),
-            fetch('https://iptv-org.github.io/api/logos.json')
-          ]);
-          
-          if (!channelsRes.ok || !streamsRes.ok || !logosRes.ok) throw new Error('Failed to fetch from real API');
-          
-          const rawChannels: any[] = await channelsRes.json();
-          const rawStreams: any[] = await streamsRes.json();
-          const rawLogos: any[] = await logosRes.json();
-          
-          const channelMap = new Map();
-          rawChannels.forEach(c => channelMap.set(c.id, c));
-          
-          const logoMap = new Map();
-          rawLogos.forEach(l => logoMap.set(l.channel, l.url));
-          
-          const parsedChannels: Channel[] = [];
-          const addedChannelIds = new Set<string>();
-          
-          // Map streams to channels
-          rawStreams.forEach((stream) => {
-             if (!stream.channel) return;
-             
-             const cInfo = channelMap.get(stream.channel);
-             if (cInfo && !cInfo.is_nsfw) {
-               const isBd = cInfo.country === 'BD' || cInfo.country === 'bd';
-               const isSports = cInfo.categories && cInfo.categories.includes('sports');
+        const [fifaRes, allRes] = await Promise.all([
+          fetch(`${BASE}/fifa.json`),
+          fetch(`${BASE}/channels.json`),
+        ]);
 
-               if (isBd || isSports) {
-                 // Only add if not already added
-                 if (!addedChannelIds.has(cInfo.id)) {
-                   addedChannelIds.add(cInfo.id);
-                   parsedChannels.push({
-                     id: cInfo.id,
-                     name: cInfo.name || 'Unknown Channel',
-                     logo: logoMap.get(cInfo.id) || '',
-                     url: stream.url,
-                     category: cInfo.categories && cInfo.categories.length > 0 ? cInfo.categories[0].toUpperCase() : 'GENERAL'
-                   });
-                 }
-               }
-             }
-          });
-          // Custom sort to force T Sports to the top
-          parsedChannels.sort((a, b) => {
-            const aIsTSports = a.name.toLowerCase().includes('t sports') || a.name.toLowerCase().includes('tsports');
-            const bIsTSports = b.name.toLowerCase().includes('t sports') || b.name.toLowerCase().includes('tsports');
-            if (aIsTSports && !bIsTSports) return -1;
-            if (!aIsTSports && bIsTSports) return 1;
-            return 0;
-          });
+        if (!fifaRes.ok || !allRes.ok) throw new Error('Failed to fetch channel data');
 
-          if (parsedChannels.length === 0) throw new Error('No channels parsed from API');
-          
-          localStorage.setItem(`cached_m3u_v4_${m3uUrl}`, JSON.stringify(parsedChannels));
-          
-          const categories = ['All', ...Array.from(new Set(parsedChannels.map(c => c.category)))];
-          set({ channels: parsedChannels, categories, loading: false } as Partial<TvState>);
-          return;
+        const [fifaRaw, allRaw]: any[][] = await Promise.all([
+          fifaRes.json(),
+          allRes.json(),
+        ]);
+
+        // Only keep live/200 channels
+        const liveAll = allRaw.filter((c: any) => c.status === 'live' || c.status_code === 200);
+
+        const toChannel = (c: any, group?: string): Channel => ({
+          id: (c.id || `${c.name}-${c.url}`).toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 60),
+          name: c.name,
+          logo: c.logo || '',
+          url: c.url,
+          category: group || c.group || 'Other',
+        });
+
+        // Football keywords for priority sorting
+        const footballKeywords = ['fifa', 'football', 'tsport', 't sport', 'bein', 'espn', 'fox sport', 'eurosport', 'star sport', 'sony sport', 'sky sport', 'dazn', 'goal tv', 'bleav football', 'oman sport', 'ktv sport', 'nbc sport', 'ptv sport', 'tsn', 'dd sport', 'live sport'];
+
+        const isFootball = (c: any) => {
+          const n = (c.name + (c.group || '')).toLowerCase();
+          return footballKeywords.some(k => n.includes(k));
+        };
+
+        // FIFA channels first (from fifa.json, filter out .mpd DASH streams)
+        const fifaChannels = fifaRaw
+          .filter((c: any) => c.url && !c.url.includes('.mpd'))
+          .map((c: any) => toChannel(c, 'FIFA WC 2026'));
+
+        // Football/sports channels from channels.json (status 200)
+        const footballRelated = liveAll
+          .filter((c: any) => isFootball(c) && !c.url.includes('.mpd'))
+          .map((c: any) => toChannel(c));
+
+        // Rest of live channels
+        const otherChannels = liveAll
+          .filter((c: any) => !isFootball(c) && !c.url.includes('.mpd'))
+          .map((c: any) => toChannel(c));
+
+        // Dedupe by url across all
+        const seenUrls = new Set<string>();
+        const footballChannels: Channel[] = [];
+        const restChannels: Channel[] = [];
+
+        for (const ch of [...fifaChannels, ...footballRelated]) {
+          if (!seenUrls.has(ch.url)) { seenUrls.add(ch.url); footballChannels.push(ch); }
+        }
+        for (const ch of otherChannels) {
+          if (!seenUrls.has(ch.url)) { seenUrls.add(ch.url); restChannels.push(ch); }
         }
 
-        let m3uContent = '';
+        const categories = buildCategories(footballChannels);
 
-        if (m3uUrl === 'local-sample') {
-          m3uContent = STATIC_FALLBACK_M3U;
-        } else {
-          try {
-            // Direct fetch attempt
-            const response = await fetch(m3uUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            m3uContent = await response.text();
-          } catch (fetchErr) {
-            console.warn('Direct fetch failed. Retrying through CORS proxy...', fetchErr);
-            // CORS Proxy Fallback
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(m3uUrl)}`;
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error(`Failed to fetch via CORS proxy. Playlist server might be down.`);
-            m3uContent = await response.text();
-          }
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), football: footballChannels, all: restChannels }));
+        } catch { /* storage full */ }
+
+        set({ channels: footballChannels, allChannels: restChannels, categories, loading: false } as Partial<TvState>);
+        if (!get().currentChannel && footballChannels.length > 0) {
+          set({ currentChannel: footballChannels[0] } as Partial<TvState>);
         }
-
-        if (!m3uContent || !m3uContent.includes('#EXTM3U')) {
-          throw new Error('Invalid playlist format. Must be a valid M3U file.');
-        }
-
-        // Cache the raw content
-        localStorage.setItem(`cached_m3u_v2_${m3uUrl}`, m3uContent);
-
-        const parsedChannels = parseM3U(m3uContent);
-        if (parsedChannels.length === 0) {
-          throw new Error('No valid channels found in the M3U playlist.');
-        }
-
-        const categories = ['All', ...Array.from(new Set(parsedChannels.map(c => c.category)))];
-        
-        set({ 
-          channels: parsedChannels, 
-          categories, 
-          loading: false 
-        } as Partial<TvState>);
 
       } catch (err: any) {
-        console.error(err);
-        set({ 
-          error: err.message || 'Failed to fetch M3U playlist.', 
-          loading: false 
-        } as Partial<TvState>);
-
-        // Fallback to static sample if it errored on custom URL
-        if (m3uUrl !== 'local-sample') {
-          console.log('Loading local sample as safety fallback...');
-          const parsed = parseM3U(STATIC_FALLBACK_M3U);
-          const categories = ['All', ...Array.from(new Set(parsed.map(c => c.category)))];
-          set({ 
-            channels: parsed, 
-            categories,
-            error: `Failed to load URL. Loaded offline demo instead. (${err.message})`
-          } as Partial<TvState>);
-          if (parsed.length > 0 && !get().currentChannel) {
-            set({ currentChannel: parsed[0] } as Partial<TvState>);
-          }
-        }
+        set({ error: err.message || 'Failed to load channels.', loading: false } as Partial<TvState>);
       }
     },
 
     setActiveCategory: (category) => set({ activeCategory: category, searchQuery: '' } as Partial<TvState>),
-    
-    setSearchQuery: (query) => set({ searchQuery: query } as Partial<TvState>)
+    setSearchQuery: (query) => set({ searchQuery: query } as Partial<TvState>),
   };
 };
+
+function buildCategories(channels: Channel[]): string[] {
+  const priority = ['FIFA WC 2026', 'Sports', 'Live Sports', 'Bangla', 'Bangla News', 'Indian Bangla'];
+  const all = Array.from(new Set(channels.map(c => c.category)));
+  const rest = all.filter(c => !priority.includes(c)).sort();
+  return ['All', ...priority.filter(p => all.includes(p)), ...rest];
+}

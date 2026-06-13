@@ -4,7 +4,13 @@ import {
   Settings as SettingsIcon, Link, FileText, CheckCircle
 } from 'lucide-react';
 import { useTvStore } from '../../store/useTvStore';
-import { PRESET_PLAYLISTS } from '../../config';
+import { SHAJON_BASE } from '../../config';
+
+const PRESET_PLAYLISTS = [
+  { name: '🏆 FIFA WC 2026 + All Channels', url: SHAJON_BASE, description: '6800+ verified live channels — FIFA, Sports, Bangla, News & more' },
+  { name: '🇧🇩 Bangla Channels', url: `${SHAJON_BASE}/bangla.json`, description: '100+ verified Bangladeshi channels' },
+  { name: '⚽ Sports Only', url: `${SHAJON_BASE}/sports.json`, description: '244 verified live sports channels' },
+];
 
 export const Settings: React.FC = () => {
   const {

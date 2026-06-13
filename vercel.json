@@ -1,3 +1,6 @@
 {
-  "name": "live-tv-streamer"
+  "name": "live-tv-streamer",
+  "rewrites": [
+    { "source": "/stream-proxy", "destination": "/api/proxy" }
+  ]
 }

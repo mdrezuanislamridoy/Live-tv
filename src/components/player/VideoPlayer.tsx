@@ -78,43 +78,75 @@ export const VideoPlayer: React.FC = () => {
 
     const streamUrl = currentChannel.url;
 
-    const initPlayer = (url: string, isProxyFallback: boolean) => {
-      // Clean up previous Hls instance
+    const PROXY_LIST = [
+      (u: string) => u,
+      (u: string) => `/stream-proxy?url=${encodeURIComponent(u)}`,
+      (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    ];
+
+    // Custom HLS loader that routes ALL requests (manifest + segments) through proxy
+    const makeProxyLoader = (proxyFn: (u: string) => string) => {
+      const DefaultLoader = Hls.DefaultConfig.loader as any;
+      return class ProxyLoader extends DefaultLoader {
+        load(context: any, config: any, callbacks: any) {
+          context.url = proxyFn(context.url);
+          super.load(context, config, callbacks);
+        }
+      };
+    };
+
+    const initPlayer = (proxyIndex: number) => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
 
-      // Check if the stream is an HLS (m3u8) stream
+      const tryNextProxy = () => {
+        const next = proxyIndex + 1;
+        if (next < PROXY_LIST.length) {
+          initPlayer(next);
+        } else {
+          setPlaybackError('This channel is blocked or offline in your region.');
+          setIsBuffering(false);
+          if (autoPlayNext) setTimeout(() => handleNextChannel(), 2000);
+        }
+      };
+
+      const useProxy = proxyIndex > 0;
+      const url = useProxy ? PROXY_LIST[proxyIndex](streamUrl) : streamUrl;
+
       if (streamUrl.includes('.m3u8') || streamUrl.includes('/manifest')) {
         if (Hls.isSupported()) {
-          const hls = new Hls({
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            maxBufferSize: 60 * 1000 * 1000, // 60MB
+          const hlsConfig: any = {
+            maxBufferLength: 8,
+            maxMaxBufferLength: 16,
+            maxBufferSize: 20 * 1000 * 1000,
             enableWorker: true,
-            lowLatencyMode: false,
-          });
+            lowLatencyMode: true,
+            startLevel: -1,
+            abrEwmaDefaultEstimate: 500000,
+            testBandwidth: true,
+            progressive: true,
+          };
+
+          // Route ALL HLS requests (manifest + segments) through proxy
+          if (useProxy) {
+            hlsConfig.loader = makeProxyLoader(PROXY_LIST[proxyIndex]);
+          }
+
+          const hls = new Hls(hlsConfig);
           hlsRef.current = hls;
-          
           hls.loadSource(url);
           hls.attachMedia(video);
-          
+
           hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
             setIsBuffering(false);
-            
-            // Map available quality levels
-            const levels = data.levels.map((l, index) => ({
-              height: l.height,
-              bitrate: l.bitrate,
-              index: index
-            }));
+            const levels = data.levels.map((l, index) => ({ height: l.height, bitrate: l.bitrate, index }));
             setQualityLevels(levels);
             setCurrentQualityLevel(hls.currentLevel);
-
             if (isPlaying) {
               video.play().catch(err => {
-                console.warn("Autoplay blocked by browser with sound. Attempting muted autoplay...", err);
                 if (err.name === 'NotAllowedError') {
                   video.muted = true;
                   setIsMuted(true);
@@ -126,84 +158,42 @@ export const VideoPlayer: React.FC = () => {
             }
           });
 
-          // Error Handling
           hls.on(Hls.Events.ERROR, (_, data) => {
-            console.warn('HLS.js error:', data);
             if (data.fatal) {
-              switch (data.type) {
-                case Hls.ErrorTypes.NETWORK_ERROR:
-                  if (!isProxyFallback) {
-                    console.log('Fatal network error (likely CORS). Retrying with proxy...');
-                    hls.destroy();
-                    hlsRef.current = null;
-                    initPlayer(`https://corsproxy.io/?${encodeURIComponent(streamUrl)}`, true);
-                  } else {
-                    console.log('Fatal network error even after proxy fallback...');
-                    setPlaybackError('This broadcaster has blocked playback in standard web browsers (CORS restriction) or in your region. Skipping to next...');
-                    setIsBuffering(false);
-                    hls.destroy();
-                    hlsRef.current = null;
-                    if (autoPlayNext) setTimeout(() => handleNextChannel(), 2000);
-                  }
-                  break;
-                case Hls.ErrorTypes.MEDIA_ERROR:
-                  console.log('Fatal media error, trying to recover...');
-                  hls.recoverMediaError();
-                  break;
-                default:
-                  setPlaybackError('Stream offline or blocked by the provider. Skipping to next...');
-                  setIsBuffering(false);
-                  hls.destroy();
-                  hlsRef.current = null;
-                  if (autoPlayNext) setTimeout(() => handleNextChannel(), 2000);
-                  break;
+              hls.destroy();
+              hlsRef.current = null;
+              if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                // Try same proxy index with fresh instance
+                initPlayer(proxyIndex);
+              } else {
+                tryNextProxy();
               }
             }
           });
 
-          // Buffering managed globally by HTML5 video events above
-
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Native HLS support (Safari, iOS)
           video.src = url;
           video.onloadedmetadata = () => {
             setIsBuffering(false);
             if (isPlaying) video.play().catch(() => setIsPlaying(false));
           };
-          video.onerror = () => {
-            if (!isProxyFallback) {
-              initPlayer(`https://corsproxy.io/?${encodeURIComponent(streamUrl)}`, true);
-            } else {
-              setPlaybackError('Failed to load live video stream. Skipping...');
-              setIsBuffering(false);
-              if (autoPlayNext) setTimeout(() => handleNextChannel(), 2000);
-            }
-          };
+          video.onerror = () => tryNextProxy();
         } else {
           setPlaybackError('HLS streaming is not supported in this browser.');
           setIsBuffering(false);
         }
       } else {
-        // Direct MP4 or other video streaming formats
         video.src = url;
         video.load();
         video.onloadedmetadata = () => {
           setIsBuffering(false);
           if (isPlaying) video.play().catch(() => setIsPlaying(false));
         };
-        video.onerror = () => {
-          if (!isProxyFallback) {
-            initPlayer(`https://corsproxy.io/?${encodeURIComponent(streamUrl)}`, true);
-          } else {
-            setPlaybackError('Failed to play stream. Unsupported format or CORS restrictions. Skipping...');
-            setIsBuffering(false);
-            if (autoPlayNext) setTimeout(() => handleNextChannel(), 2000);
-          }
-        };
+        video.onerror = () => tryNextProxy();
       }
     };
 
-    initPlayer(streamUrl, false);
+    initPlayer(0);
 
     return () => {
       video.removeEventListener('waiting', handleWaiting);
@@ -381,7 +371,7 @@ export const VideoPlayer: React.FC = () => {
       {/* Video Element */}
       <video
         ref={videoRef}
-        onClick={togglePlay}
+        onClick={resetControlsTimer}
         onTimeUpdate={() => {
           if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
         }}
@@ -440,9 +430,7 @@ export const VideoPlayer: React.FC = () => {
 
       {/* Custom Player Controls (Fade effect) */}
       <div 
-        onClick={(e) => {
-          if (e.target === e.currentTarget) togglePlay();
-        }}
+        onClick={resetControlsTimer}
         className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60 flex flex-col justify-between p-3 md:p-6 z-10 transition-opacity duration-300 select-none ${
           showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
@@ -489,16 +477,17 @@ export const VideoPlayer: React.FC = () => {
           </div>
         </div>
 
-        {/* Middle Controls (Big play button for quick desktop clicks) */}
+        {/* Center Play/Pause Button — always visible when controls shown */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {!isPlaying && (
-            <button
-              onClick={togglePlay}
-              className="p-5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 pointer-events-auto transition-transform active:scale-95 cursor-pointer shadow-2xl"
-            >
-              <Play size={32} fill="currentColor" className="ml-1" />
-            </button>
-          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+            className="p-5 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 pointer-events-auto transition-all active:scale-95 cursor-pointer shadow-2xl"
+          >
+            {isPlaying
+              ? <Pause size={32} fill="currentColor" />
+              : <Play size={32} fill="currentColor" className="ml-1" />
+            }
+          </button>
         </div>
 
         {/* Bottom Controls: Seek bar, buttons, and timers */}
